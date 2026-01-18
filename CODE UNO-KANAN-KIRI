@@ -1,0 +1,67 @@
+#include <Servo.h>
+
+Servo servo;
+
+// ===== KONFIG =====
+const int SERVO_PIN = 9;
+const int STOP_VAL  = 90;
+const int SPEED     = 10;     // kecepatan servo
+const int STEP_TIME = 120;    // durasi 1 step (ms)
+const int STEP_GAP  = 1000;   // 1 detik antar step
+// ==================
+
+char direction = 'C';         // L, R, C
+bool isMoving = false;
+
+unsigned long moveStart = 0;
+unsigned long lastStep  = 0;
+
+void setup() {
+  Serial.begin(9600);
+  servo.attach(SERVO_PIN);
+  servo.write(STOP_VAL);
+
+  Serial.println("FACE TRACK SERVO READY");
+}
+
+void loop() {
+
+  // === TERIMA ARAH DARI PYTHON ===
+  if (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == 'L' || c == 'R' || c == 'C') {
+      direction = c;
+    }
+    while (Serial.available() > 0) Serial.read();
+  }
+
+  unsigned long now = millis();
+
+  // === JIKA DI TENGAH → STOP TOTAL ===
+  if (direction == 'C') {
+    servo.write(STOP_VAL);
+    isMoving = false;
+    return;
+  }
+
+  // === SETIAP 1 DETIK LAKUKAN 1 STEP ===
+  if (!isMoving && now - lastStep >= STEP_GAP) {
+
+    if (direction == 'L') {  //kalau mirror disini ubah 
+      servo.write(STOP_VAL + SPEED);
+    }
+    else if (direction == 'R') {
+      servo.write(STOP_VAL - SPEED);
+    }
+
+    moveStart = now;
+    isMoving = true;
+    lastStep = now;
+  }
+
+  // === STOP SETELAH 1 STEP ===
+  if (isMoving && now - moveStart >= STEP_TIME) {
+    servo.write(STOP_VAL);
+    isMoving = false;
+  }
+}

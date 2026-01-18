@@ -1,0 +1,107 @@
+#include <Servo.h>
+
+// ================= SERVO OBJECT =================
+Servo servoV;   // ATAS / BAWAH
+Servo servoH;   // KIRI / KANAN
+
+// ================= KONFIG =================
+const int SERVO_PIN_V = 10;
+const int SERVO_PIN_H = 9;
+
+const int STOP_VAL  = 90;
+const int SPEED     = 10;     // kecepatan servo
+const int STEP_TIME = 120;    // durasi 1 step (ms)
+const int STEP_GAP  = 1000;   // 1 detik antar step
+// ===========================================
+
+// ================= STATE =================
+char direction = 'C';
+
+bool movingV = false;
+bool movingH = false;
+
+unsigned long moveStartV = 0;
+unsigned long moveStartH = 0;
+
+unsigned long lastStepV = 0;
+unsigned long lastStepH = 0;
+// =========================================
+
+void setup() {
+  Serial.begin(9600);
+
+  servoV.attach(SERVO_PIN_V);
+  servoH.attach(SERVO_PIN_H);
+
+  servoV.write(STOP_VAL);
+  servoH.write(STOP_VAL);
+
+  Serial.println("DUAL SERVO STEP MODE READY");
+}
+
+void loop() {
+
+  // ===== TERIMA COMMAND DARI PYTHON =====
+  if (Serial.available() > 0) {
+    char c = Serial.read();
+
+    if (c == 'T' || c == 'D' || c == 'L' || c == 'R' || c == 'C') {
+      direction = c;
+    }
+
+    while (Serial.available() > 0) Serial.read();
+  }
+
+  unsigned long now = millis();
+
+  // ===== STOP SEMUA =====
+  if (direction == 'C') {
+    servoV.write(STOP_VAL);
+    servoH.write(STOP_VAL);
+    movingV = false;
+    movingH = false;
+    return;
+  }
+
+  // ===== SERVO VERTIKAL (PIN 10) =====
+  if ((direction == 'T' || direction == 'D') &&
+      !movingV && now - lastStepV >= STEP_GAP) {
+
+    if (direction == 'T') {
+      servoV.write(STOP_VAL - SPEED);  // ATAS
+    }
+    else if (direction == 'D') {
+      servoV.write(STOP_VAL + SPEED);  // BAWAH
+    }
+
+    moveStartV = now;
+    movingV = true;
+    lastStepV = now;
+  }
+
+  if (movingV && now - moveStartV >= STEP_TIME) {
+    servoV.write(STOP_VAL);
+    movingV = false;
+  }
+
+  // ===== SERVO HORIZONTAL (PIN 9) =====
+  if ((direction == 'L' || direction == 'R') &&
+      !movingH && now - lastStepH >= STEP_GAP) {
+
+    if (direction == 'L') {
+      servoH.write(STOP_VAL + SPEED);  // KIRI
+    }
+    else if (direction == 'R') {
+      servoH.write(STOP_VAL - SPEED);  // KANAN
+    }
+
+    moveStartH = now;
+    movingH = true;
+    lastStepH = now;
+  }
+
+  if (movingH && now - moveStartH >= STEP_TIME) {
+    servoH.write(STOP_VAL);
+    movingH = false;
+  }
+}
